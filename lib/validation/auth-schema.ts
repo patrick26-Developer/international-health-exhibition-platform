@@ -15,15 +15,6 @@ import {
   USER_TYPES, 
   VALIDATION_ERROR_CODES 
 } from '@/lib/utils/constants';
-import type { 
-  InscriptionRequest,
-  ConnexionRequest,
-  VerificationEmailRequest,
-  MotDePasseOublieRequest,
-  ReinitialisationMDPRequest,
-  ChangementMDPRequest,
-  RenvoiCodeRequest
-} from '@/lib/types';
 
 // ============================================
 // HELPERS ZOD
