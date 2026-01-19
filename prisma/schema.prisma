@@ -1,0 +1,668 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// ÉNUMÉRATIONS PRINCIPALES REVISÉES
+// ============================================
+
+enum TypeUtilisateur {
+  SUPER_ADMIN
+  ADMIN
+  PARTENAIRE
+  EXPOSANT
+  BENEVOLE
+  VISITEUR
+  MEDIA
+}
+
+enum StatutCompte {
+  ACTIF
+  INACTIF
+  SUSPENDU
+  EN_ATTENTE_VERIFICATION
+  SUPPRIME
+}
+
+enum StatutEdition {
+  BROUILLON
+  INSCRIPTIONS_OUVERTES
+  INSCRIPTIONS_FERMEES
+  PLANIFIEE
+  EN_COURS
+  TERMINEE
+  ANNULEE
+}
+
+enum TypeProgramme {
+  SPORT_SANTE
+  NUTRITION
+  BIEN_ETRE
+  PREVENTION_MNT
+  SANTE_MENTALE
+}
+
+enum TypeMedia {
+  PHOTO
+  VIDEO
+  DOCUMENT
+  COMMUNIQUE_PRESSE
+  INFOGRAPHIE
+  RAPPORT
+}
+
+enum TypeNotification {
+  INFO
+  SUCCES
+  AVERTISSEMENT
+  ERREUR
+  ACTION_REQUISE
+}
+
+// OTP UNIQUEMENT pour actions critiques
+enum TypeOTP {
+  VERIFICATION_EMAIL      // Pour vérifier l'email à l'inscription
+  REINITIALISATION_MDP    // Pour mot de passe oublié
+  CHANGEMENT_EMAIL        // Pour changer d'email
+  SUPPRESSION_COMPTE      // Pour supprimer le compte
+}
+
+enum StatutOTP {
+  EN_ATTENTE
+  VERIFIE
+  EXPIRE
+  ANNULE
+}
+
+enum ActionAudit {
+  CREATION
+  MODIFICATION
+  SUPPRESSION
+  CONNEXION
+  DECONNEXION
+  INSCRIPTION
+  VERIFICATION_EMAIL
+  REINITIALISATION_MDP
+  CHANGEMENT_EMAIL
+  CHANGEMENT_MDP
+  APPROBATION
+  REJET
+  PUBLICATION
+}
+
+enum TypeInscription {
+  VISITEUR
+  EXPOSANT
+  BENEVOLE
+}
+
+enum StatutInscription {
+  EN_ATTENTE
+  VALIDEE
+  REFUSEE
+  ANNULEE
+}
+
+// ============================================
+// 1. UTILISATEURS - SANS 2FA
+// ============================================
+
+model Utilisateur {
+  id                    String           @id @default(cuid())
+  email                 String           @unique
+  motDePasse            String           // Hash bcrypt
+  prenom                String
+  nom                   String
+  telephone             String?          @unique
+  pays                  String?
+  ville                 String?
+  adresse               String?          @db.Text
+  codePostal            String?
+  langue                String           @default("fr")
+  
+  // Rôle et statut
+  typeUtilisateur       TypeUtilisateur  @default(VISITEUR)
+  statutCompte          StatutCompte     @default(EN_ATTENTE_VERIFICATION)
+  emailVerifie          Boolean          @default(false)
+  dateVerificationEmail DateTime?
+  
+  // Sécurité (sans 2FA)
+  derniereConnexion     DateTime?
+  adresseIPConnexion    String?
+  tentativesEchouees    Int              @default(0)
+  compteBloqueLe        DateTime?
+  raisonBlocage         String?          @db.Text
+  
+  // Profil
+  photoProfil           String?
+  biographie            String?          @db.Text
+  siteWeb               String?
+  organisation          String?
+  poste                 String?
+  reseauxSociaux        Json?
+  
+  // Préférences
+  accepteNewsletter     Boolean          @default(true)
+  accepteNotifications  Boolean          @default(true)
+  notificationsSMS      Boolean          @default(false)
+  
+  // Métadonnées
+  dateCreation          DateTime         @default(now())
+  dateModification      DateTime         @updatedAt
+  dateSuppression       DateTime?        // Soft delete
+  derniereActivite      DateTime?        @default(now())
+  
+  // ===== RELATIONS =====
+  sessions              Session[]
+  otps                  OTP[]            // OTP pour actions critiques
+  historiqueConnexions  HistoriqueConnexion[]
+  historiqueMDP         HistoriqueMDP[]  // Pour éviter réutilisation
+  notifications         Notification[]
+  activites             ActiviteUtilisateur[]
+  inscriptions          Inscription[]
+  partenaire            Partenaire?
+  exposants             Exposant[]
+  benevoles             Benevole[]
+  medias                Media[]
+  journauxAudit         JournalAudit[]
+  
+  @@index([email])
+  @@index([telephone])
+  @@index([typeUtilisateur])
+  @@index([statutCompte])
+  @@index([emailVerifie])
+  @@map("utilisateurs")
+}
+
+// ============================================
+// 2. OTP - SEULEMENT POUR ACTIONS CRITIQUES
+// ============================================
+
+model OTP {
+  id              String        @id @default(cuid())
+  utilisateurId   String
+  type            TypeOTP       // UNIQUEMENT: VERIFICATION_EMAIL, REINITIALISATION_MDP, CHANGEMENT_EMAIL, SUPPRESSION_COMPTE
+  code            String        // 6 chiffres
+  destinataire    String        // email
+  expiresAt       DateTime      // Expire après 10 minutes
+  tentatives      Int           @default(0)
+  statut          StatutOTP     @default(EN_ATTENTE)
+  metadata        Json?         // {ip, userAgent, operation}
+  
+  dateCreation    DateTime      @default(now())
+  dateUtilisation DateTime?
+  
+  utilisateur     Utilisateur   @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  
+  @@index([utilisateurId])
+  @@index([code])
+  @@index([destinataire])
+  @@index([type])
+  @@index([expiresAt])
+  @@index([statut])
+  @@map("otps")
+}
+
+// ============================================
+// 3. SESSIONS & SÉCURITÉ
+// ============================================
+
+model Session {
+  id              String   @id @default(cuid())
+  utilisateurId   String
+  jeton           String   @unique
+  jetonRafraichi  String?  @unique
+  adresseIP       String?
+  userAgent       String?
+  expiresAt       DateTime
+  dernierAcces    DateTime @default(now())
+  estActive       Boolean  @default(true)
+  
+  dateCreation    DateTime @default(now())
+  dateModification DateTime @updatedAt
+  
+  utilisateur     Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  
+  @@index([utilisateurId])
+  @@index([jeton])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model HistoriqueConnexion {
+  id              String    @id @default(cuid())
+  utilisateurId   String
+  adresseIP       String?
+  userAgent       String?
+  reussi          Boolean   @default(true)
+  raisonEchec     String?
+  
+  dateCreation    DateTime  @default(now())
+  
+  utilisateur     Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  
+  @@index([utilisateurId])
+  @@index([reussi])
+  @@index([dateCreation])
+  @@map("historique_connexions")
+}
+
+model HistoriqueMDP {
+  id              String     @id @default(cuid())
+  utilisateurId   String
+  hashMDP         String     // Ancien mot de passe hashé
+  dateCreation    DateTime   @default(now())
+  
+  utilisateur     Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  
+  @@index([utilisateurId])
+  @@map("historique_mdp")
+}
+
+model ActiviteUtilisateur {
+  id              String      @id @default(cuid())
+  utilisateurId   String
+  action          String      // "update_profile", "change_password", "delete_account"
+  description     String?
+  adresseIP       String?
+  userAgent       String?
+  
+  dateCreation    DateTime    @default(now())
+  
+  utilisateur     Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  
+  @@index([utilisateurId])
+  @@index([action])
+  @@map("activites_utilisateurs")
+}
+
+model JournalAudit {
+  id              String        @id @default(cuid())
+  utilisateurId   String?
+  action          ActionAudit
+  entite          String        // "Utilisateur", "Edition", "Partenaire"
+  entiteId        String?
+  modifications   Json?         // {avant: {}, apres: {}}
+  adresseIP       String?
+  userAgent       String?
+  
+  dateCreation    DateTime      @default(now())
+  
+  utilisateur     Utilisateur?  @relation(fields: [utilisateurId], references: [id], onDelete: SetNull)
+  
+  @@index([utilisateurId])
+  @@index([action])
+  @@index([entite])
+  @@index([dateCreation])
+  @@map("journaux_audit")
+}
+
+// ============================================
+// 4. FILE D'ATTENTE EMAIL (Nodemailer)
+// ============================================
+
+model FileAttenteEmail {
+  id              String     @id @default(cuid())
+  type            String     // "verification", "reset_password", "welcome", "notification"
+  destinataire    String
+  sujet           String
+  contenuHTML     String     @db.Text
+  contenuText     String?    @db.Text
+  statut          String     @default("EN_ATTENTE") // EN_ATTENTE, ENVOYE, ECHEC, REESSAYER
+  tentatives      Int        @default(0)
+  erreur          String?    @db.Text
+  messageId       String?    // ID du fournisseur email
+  
+  // Liens
+  otpId           String?    // Lien vers l'OTP si applicable
+  
+  dateCreation    DateTime   @default(now())
+  dateEnvoi       DateTime?
+  prochainEssai   DateTime?
+  
+  @@index([destinataire])
+  @@index([statut])
+  @@index([type])
+  @@index([dateCreation])
+  @@map("file_attente_email")
+}
+
+// ============================================
+// 5. ÉDITIONS DU SALON - REVISÉ POUR VISION INSTITUTIONNELLE
+// ============================================
+
+model Edition {
+  id              String         @id @default(cuid())
+  nom             String
+  slug            String         @unique
+  ville           String
+  pays            String
+  lieu            String?
+  dateDebut       DateTime
+  dateFin         DateTime
+  dateFinInscriptions   DateTime?
+  description     String?        @db.Text
+  thematique      String?
+  statut          StatutEdition  @default(PLANIFIEE)
+  
+  // Capacités estimatives (pas limites commerciales)
+  capaciteEstimeeVisiteurs  Int?
+  capaciteEstimeeExposants  Int?
+  capaciteEstimeeBenevoles  Int?
+  
+  // Métadonnées institutionnelles
+  siteWeb         String?
+  emailContact    String?
+  telephoneContact String?
+  
+  // Visibilité
+  estPublique     Boolean        @default(true)
+  estArchivee     Boolean        @default(false)
+  
+  dateCreation    DateTime       @default(now())
+  dateModification DateTime      @updatedAt
+  
+  // Relations
+  inscriptions    Inscription[]
+  programmes      ProgrammeEdition[]
+  exposants       Exposant[]
+  benevoles       Benevole[]
+  medias          Media[]
+  bilan           BilanEdition?
+  statistiques    Statistique[]
+  
+  @@index([slug])
+  @@index([statut])
+  @@index([dateDebut])
+  @@map("editions")
+}
+
+model BilanEdition {
+  id                    String      @id @default(cuid())
+  editionId             String      @unique
+  nombreVisiteurs       Int
+  nombreExposants       Int
+  nombreBenevoles       Int
+  actionsSensibilisation Int
+  partenariatsActifs    Int
+  retombeesSociales     String?     @db.Text
+  retombeesSanitaires   String?     @db.Text
+  satisfactionMoyenne   Float?
+  recommandation        Int?
+  
+  datePublication       DateTime    @default(now())
+  
+  edition               Edition     @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  
+  @@map("bilans_editions")
+}
+
+// ============================================
+// 6. INSCRIPTIONS
+// ============================================
+
+model Inscription {
+  id              String            @id @default(cuid())
+  utilisateurId   String
+  editionId       String
+  typeInscription TypeInscription
+  statut          StatutInscription @default(EN_ATTENTE)
+  dateInscription DateTime          @default(now())
+  dateValidation  DateTime?
+  commentaire     String?           @db.Text
+  
+  // Champs spécifiques
+  centresInteret  Json?             // Pour visiteurs
+  nomOrganisation String?           // Pour exposants
+  secteurActivite String?           // Pour exposants
+  competences     String?           @db.Text // Pour bénévoles
+  disponibilites  Json?             // Pour bénévoles
+  
+  utilisateur     Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  edition         Edition     @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  
+  @@unique([utilisateurId, editionId, typeInscription])
+  @@index([utilisateurId])
+  @@index([editionId])
+  @@index([statut])
+  @@map("inscriptions")
+}
+
+// ============================================
+// 7. PROFILS SPÉCIFIQUES - REVISÉS POUR VISION INSTITUTIONNELLE
+// ============================================
+
+model Exposant {
+  id                  String          @id @default(cuid())
+  utilisateurId       String
+  editionId           String
+  nomOrganisation     String
+  typeOrganisation    String          // Entreprise, ONG, Institution
+  secteurActivite     String
+  description         String?         @db.Text
+  logo                String?
+  emplacementStand    String?         // Attribué par organisation
+  numeroStand         String?
+  
+  // Contact institutionnel
+  siteWeb             String?
+  personneContact     String?
+  emailContact        String?
+  telephoneContact    String?
+  
+  // Statut ADMINISTRATIF seulement (pas commercial)
+  statut              String          @default("EN_ATTENTE") // EN_ATTENTE, APPROUVE, REFUSE
+  motifRefus          String?         @db.Text // Raison administrative ou incompatibilité
+  
+  // ❌ SUPPRIMÉ: estPaye Boolean (incompatible avec vision institutionnelle)
+  
+  dateCreation        DateTime        @default(now())
+  dateModification    DateTime        @updatedAt
+  
+  utilisateur         Utilisateur     @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  edition             Edition         @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  
+  @@unique([utilisateurId, editionId])
+  @@index([utilisateurId])
+  @@index([editionId])
+  @@map("exposants")
+}
+
+model Benevole {
+  id                  String          @id @default(cuid())
+  utilisateurId       String
+  editionId           String
+  competences         String?         @db.Text
+  disponibilites      Json?
+  tachesPreferees     String?         @db.Text
+  experience         String?  @db.Text
+  motivation         String?  @db.Text
+  missionsAssignees   String?         @db.Text
+  statut              String          @default("CANDIDAT") // CANDIDAT, ACCEPTE, REFUSE
+  
+  dateCreation        DateTime        @default(now())
+  dateModification    DateTime        @updatedAt
+  
+  utilisateur         Utilisateur     @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  edition             Edition         @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  
+  @@unique([utilisateurId, editionId])
+  @@index([utilisateurId])
+  @@index([editionId])
+  @@map("benevoles")
+}
+
+model Partenaire {
+  id                    String           @id @default(cuid())
+  utilisateurId         String           @unique
+  nomOrganisation       String
+  typePartenaire        String           // SPONSOR, INSTITUTION, MECENE, MEDIA, TECHNIQUE
+  niveauPartenariat     String?          // PLATINE, OR, ARGENT, BRONZE, INSTITUTIONNEL
+  description           String?          @db.Text
+  logo                  String?
+  siteWeb               String?
+  
+  // Contact institutionnel
+  personneContact       String?
+  emailContact          String?
+  telephoneContact      String?
+  
+  // Contrat de partenariat (institutionnel)
+  dateDebut             DateTime?
+  dateFin               DateTime?
+  
+  // Visibilité institutionnelle
+  afficherSurSite       Boolean          @default(true)
+  
+  dateCreation          DateTime         @default(now())
+  dateModification      DateTime         @updatedAt
+  
+  utilisateur           Utilisateur      @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  
+  @@index([utilisateurId])
+  @@map("partenaires")
+}
+
+// ============================================
+// 8. PROGRAMMES
+// ============================================
+
+model ProgrammeEdition {
+  id              String   @id @default(cuid())
+  editionId       String
+  type            TypeProgramme
+  titre           String
+  description     String?  @db.Text
+  dateDebut       DateTime
+  dateFin         DateTime
+  lieu            String?
+  intervenants    Json?
+  maxParticipants Int?
+  
+  dateCreation    DateTime @default(now())
+  dateModification DateTime @updatedAt
+  
+  edition         Edition  @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  
+  @@index([editionId])
+  @@index([type])
+  @@map("programmes_editions")
+}
+
+// ============================================
+// 9. MÉDIAS
+// ============================================
+
+model Media {
+  id                String        @id @default(cuid())
+  titre             String
+  description       String?       @db.Text
+  typeMedia         TypeMedia
+  url               String
+  miniature         String?
+  
+  // Relations
+  editionId         String?
+  auteurId          String
+  
+  // Métadonnées institutionnelles
+  estPublic         Boolean       @default(true)
+  
+  dateCreation      DateTime      @default(now())
+  dateModification  DateTime      @updatedAt
+  
+  edition           Edition?      @relation(fields: [editionId], references: [id], onDelete: SetNull)
+  auteur            Utilisateur   @relation(fields: [auteurId], references: [id], onDelete: Cascade)
+  
+  @@index([auteurId])
+  @@index([editionId])
+  @@map("medias")
+}
+
+// ============================================
+// 10. NOTIFICATIONS
+// ============================================
+
+model Notification {
+  id              String             @id @default(cuid())
+  utilisateurId   String
+  type            TypeNotification
+  titre           String
+  message         String             @db.Text
+  lue             Boolean            @default(false)
+  lien            String?
+  
+  dateCreation    DateTime           @default(now())
+  dateLecture     DateTime?
+  
+  utilisateur     Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  
+  @@index([utilisateurId])
+  @@index([lue])
+  @@map("notifications")
+}
+
+// ============================================
+// 11. CONFIGURATION
+// ============================================
+
+model ConfigEmail {
+  id              String   @id @default(cuid())
+  provider        String   @default("nodemailer")
+  host            String?
+  port            Int?
+  secure          Boolean? @default(false)
+  auth            Json?    // {user, pass}
+  senderEmail     String
+  senderName      String
+  estActif        Boolean  @default(true)
+  
+  dateCreation    DateTime @default(now())
+  dateModification DateTime @updatedAt
+  
+  @@map("configs_email")
+}
+
+model Parametre {
+  id              String   @id @default(cuid())
+  cle             String   @unique
+  valeur          String   @db.Text
+  description     String?
+  estPublic       Boolean  @default(false)
+  
+  dateCreation    DateTime @default(now())
+  dateModification DateTime @updatedAt
+  
+  @@index([cle])
+  @@map("parametres")
+}
+
+// ============================================
+// 12. STATISTIQUES INSTITUTIONNELLES
+// ============================================
+
+model Statistique {
+  id                String    @id @default(cuid())
+  editionId         String?
+  date              DateTime  @default(now())
+  
+  // Métriques institutionnelles
+  nombreVisiteurs   Int       @default(0)
+  nombreInscriptions Int      @default(0)
+  inscriptionsExposants Int   @default(0)
+  inscriptionsBenevoles Int   @default(0)
+  
+  edition           Edition?  @relation(fields: [editionId], references: [id], onDelete: SetNull)
+  
+  @@index([editionId])
+  @@index([date])
+  @@map("statistiques")
+}

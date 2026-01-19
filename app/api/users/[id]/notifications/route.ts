@@ -1,0 +1,1 @@
+// app/api/users/[id]/notifications/route.ts
