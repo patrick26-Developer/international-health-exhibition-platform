@@ -71,7 +71,7 @@ export function SISNavbar() {
   const navItems: NavItem[] = [
     { 
       label: t.home, 
-      href: '/',
+      href: '/public',
       icon: Home
     },
     { 
@@ -124,7 +124,7 @@ export function SISNavbar() {
     },
     { 
       label: t.sdg, 
-      href: '/sdg',
+      href: '/public/sdg',
       icon: Award
     },
     { 
