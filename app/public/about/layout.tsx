@@ -1,0 +1,1 @@
+// app/public/about/page.tsx

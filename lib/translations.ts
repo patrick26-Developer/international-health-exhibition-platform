@@ -1,0 +1,67 @@
+// lib/translations.ts
+export const translations = {
+  fr: {
+    home: 'Accueil',
+    about: 'Le S.I.S.',
+    programs: 'Programmes',
+    sdg: 'ODD & OMS',
+    editions: 'Éditions',
+    partners: 'Partenariats',
+    media: 'Médias',
+    register: "S'inscrire",
+    contact: 'Contact',
+    login: 'Connexion',
+    visitors: 'Visiteurs',
+    exhibitors: 'Exposants',
+    volunteers: 'Volontaires',
+    sportHealth: 'Sport & Santé',
+    nutrition: 'Nutrition',
+    wellbeing: 'Bien-être',
+    prevention: 'Prévention MNT',
+    vision: 'Vision & Mission',
+    context: 'Contexte & Objectifs',
+    institutional: 'Institutionnel',
+    sponsors: 'Sponsors',
+    philanthropy: 'Mécénat',
+    photos: 'Photos',
+    videos: 'Vidéo',
+    press: 'Presse',
+    theme: {
+      light: 'Clair',
+      dark: 'Sombre',
+      system: 'Système'
+    }
+  },
+  en: {
+    home: 'Home',
+    about: 'The S.I.S.',
+    programs: 'Programs',
+    sdg: 'SDGs & WHO',
+    editions: 'Editions',
+    partners: 'Partnerships',
+    media: 'Media',
+    register: 'Register',
+    contact: 'Contact',
+    login: 'Login',
+    visitors: 'Visitors',
+    exhibitors: 'Exhibitors',
+    volunteers: 'Volunteers',
+    sportHealth: 'Sport & Health',
+    nutrition: 'Nutrition',
+    wellbeing: 'Well-being',
+    prevention: 'NCD Prevention',
+    vision: 'Vision & Mission',
+    context: 'Context & Objectives',
+    institutional: 'Institutional',
+    sponsors: 'Sponsors',
+    philanthropy: 'Philanthropy',
+    photos: 'Photos',
+    videos: 'Video',
+    press: 'Press',
+    theme: {
+      light: 'Light',
+      dark: 'Dark',
+      system: 'System'
+    }
+  }
+} as const;
