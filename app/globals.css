@@ -125,3 +125,31 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+/* Animation smooth pour le scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Style pour le bouton Back to Top */
+.back-to-top-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.back-to-top-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.back-to-top-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.back-to-top-exit-active {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 300ms, transform 300ms;
+}

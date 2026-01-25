@@ -1,8 +1,11 @@
-// lib/stores/language-store.ts
+// ============================================
+// 1. lib/stores/language-store.ts - VERSION CORRIGÉE
+// ============================================
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-type Language = 'fr' | 'en';
+// Type strict pour les langues supportées
+export type Language = 'fr' | 'en';
 
 interface LanguageStore {
   language: Language;

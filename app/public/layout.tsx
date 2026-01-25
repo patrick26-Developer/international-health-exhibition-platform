@@ -5,6 +5,7 @@ import { SISNavbar } from "@/components/navbar/SISNavbar";
 import { SISFooter } from "@/components/footer/SISFooter";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import "../globals.css";
+import { BackToTop } from "@/components/ui/BackToTop";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -27,6 +28,8 @@ export default function PublicLayout({
               {children}
             </main>
             <SISFooter />
+            {/* <BackToTop /> */}
+            <BackToTop />
           </div>
         </ThemeProvider>
       </body>

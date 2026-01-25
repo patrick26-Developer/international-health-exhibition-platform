@@ -1,0 +1,1 @@
+// app/dashboard/partner/page.tsx

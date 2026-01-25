@@ -1,0 +1,1 @@
+// app/dashboard/admin/page.tsx

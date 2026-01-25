@@ -32,8 +32,8 @@ export function Logo({ className, size = 'lg' }: LogoProps) {
   
   // Utiliser toujours le logo transparent sur fond clair pour un look professionnel
   const logoSrc = theme === 'dark' 
-    ? '/images/transparent/Logo_fr-removebg-preview.png'
-    : '/images/transparent/Logo_fr-removebg-preview.png';
+    ? '/images/visible/logo-coatch-didier.jpg'
+    : '/images/visible/logo-coatch-didier.jpg';
 
   return (
     <div className={cn("relative flex items-center justify-center", className)}>
