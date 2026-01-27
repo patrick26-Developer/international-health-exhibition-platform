@@ -80,6 +80,9 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --btn-outline-border: rgb(5 150 105); /* emerald-600 */
+  --btn-outline-text: rgb(4 120 87); /* emerald-700 */
+  --btn-outline-hover-bg: rgb(240 253 244); /* emerald-50 */
 }
 
 .dark {
@@ -114,6 +117,19 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.556 0 0);
+  --btn-outline-border: rgb(255 255 255);
+  --btn-outline-text: rgb(255 255 255);
+  --btn-outline-hover-bg: rgba(255, 255, 255, 0.1);
+}
+
+/* Classes utilitaires */
+.btn-outline-theme {
+  border-color: var(--btn-outline-border);
+  color: var(--btn-outline-text);
+}
+
+.btn-outline-theme:hover {
+  background-color: var(--btn-outline-hover-bg);
 }
 
 @layer base {
