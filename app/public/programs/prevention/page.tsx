@@ -421,7 +421,7 @@ export default function PreventionPage() {
                   </Link>
                 </Button>
                 
-                <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white/20 backdrop-blur-sm shadow-2xl transition-all duration-300 hover:scale-105">
+                <Button size="lg" variant="outline" className="border-2 border-white hover:bg-white/20 backdrop-blur-sm shadow-2xl transition-all duration-300 hover:scale-105">
                   <Link href="/public/contact">
                     {language === 'fr' ? 'Organiser un Programme' : 'Organize a Program'}
                   </Link>
@@ -649,7 +649,7 @@ export default function PreventionPage() {
                 </Link>
               </Button>
               
-              <Button size="lg" variant="outline" className="text-white border-white hover:bg-white/10 shadow-lg">
+              <Button size="lg" variant="outline" className="text-emerald-700 border-white hover:bg-white/10 shadow-lg">
                 <Link href="/public/contact" className="flex items-center">
                   {language === 'fr' ? 'Organiser un Programme' : 'Organize a Program'}
                 </Link>

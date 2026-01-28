@@ -629,7 +629,7 @@ export default function SDGPage() {
               <Button 
                 size="lg" 
                 variant="outline" 
-                className="text-white border-white hover:bg-white/10 text-sm md:text-base"
+                className="text-emerald-700 border-white hover:bg-white/10 text-sm md:text-base"
               >
                 <Link href="/public/programs" className="flex items-center">
                   {language === 'fr' ? 'Voir les Programmes' : 'View Programs'}
