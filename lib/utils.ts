@@ -4,30 +4,44 @@ import { twMerge } from "tailwind-merge"
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
+
 // Couleurs vertes pour la marque SIS
 export const brandColors = {
   primary: {
-    50: '#f0fdf4',
-    100: '#dcfce7',
-    200: '#bbf7d0',
-    300: '#86efac',
-    400: '#4ade80',
-    500: '#22c55e',
-    600: '#16a34a',
-    700: '#15803d',
-    800: '#166534',
-    900: '#14532d',
+    light: "from-emerald-600 to-emerald-700",
+    dark: "from-emerald-700 to-emerald-800",
+    hover: {
+      light: "hover:from-emerald-700 hover:to-emerald-800",
+      dark: "dark:hover:from-emerald-800 dark:hover:to-emerald-900"
+    }
   },
-  dark: {
-    50: '#ecfdf5',
-    100: '#d1fae5',
-    200: '#a7f3d0',
-    300: '#6ee7b7',
-    400: '#34d399',
-    500: '#10b981',
-    600: '#059669',
-    700: '#047857',
-    800: '#065f46',
-    900: '#064e3b',
+  outline: {
+    light: "border-emerald-600 text-emerald-700",
+    dark: "dark:border-emerald-500 dark:text-emerald-300",
+    hover: {
+      light: "hover:bg-emerald-50",
+      dark: "dark:hover:bg-emerald-900/20"
+    }
   }
+}
+
+// Ripple effect utility
+export function createRipple(event: React.MouseEvent<HTMLButtonElement>) {
+  const button = event.currentTarget
+  const circle = document.createElement("span")
+  const diameter = Math.max(button.clientWidth, button.clientHeight)
+  const radius = diameter / 2
+
+  circle.style.width = circle.style.height = `${diameter}px`
+  circle.style.left = `${event.clientX - button.offsetLeft - radius}px`
+  circle.style.top = `${event.clientY - button.offsetTop - radius}px`
+  circle.classList.add("ripple")
+
+  const ripple = button.getElementsByClassName("ripple")[0]
+
+  if (ripple) {
+    ripple.remove()
+  }
+
+  button.appendChild(circle)
 }

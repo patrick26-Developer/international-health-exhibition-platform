@@ -9,6 +9,8 @@ const PUBLIC_ROUTES = [
   '/',
   '/auth/login',
   '/auth/register',
+  'auth/register/exhibitor',
+  '/auth/register/volunteer',
   '/auth/forgot-password',
   '/auth/reset-password',
   '/auth/verify-email',

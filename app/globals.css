@@ -169,3 +169,105 @@ html {
   transform: translateY(20px);
   transition: opacity 300ms, transform 300ms;
 }
+/* Ajouter cette section à ton globals.css */
+@layer components {
+  /* Animation fluide pour le translate */
+  .after\:transition-transform::after {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 0.6s;
+  }
+
+  /* Dark mode adjustments pour l'effet shine */
+  .dark .after\:via-white\/20::after {
+    background-image: linear-gradient(
+      to right,
+      transparent,
+      rgba(255, 255, 255, 0.1),
+      transparent
+    );
+  }
+
+  .dark .after\:via-gray-300\/10::after {
+    background-image: linear-gradient(
+      to right,
+      transparent,
+      rgba(255, 255, 255, 0.05),
+      transparent
+    );
+  }
+
+  .dark .after\:via-emerald-500\/10::after {
+    background-image: linear-gradient(
+      to right,
+      transparent,
+      rgba(110, 231, 183, 0.1),
+      transparent
+    );
+  }
+
+  /* Effet de flottement élégant */
+  .group:hover .group-hover\:scale-110 {
+    transform: scale(1.1);
+  }
+
+  /* Gradient amélioré pour le bouton primaire */
+  .bg-gradient-to-r.from-emerald-600.to-emerald-700 {
+    background-image: linear-gradient(
+      135deg,
+      rgb(5, 150, 105) 0%,
+      rgb(4, 120, 87) 100%
+    );
+  }
+
+  .dark .bg-gradient-to-r.from-emerald-600.to-emerald-700 {
+    background-image: linear-gradient(
+      135deg,
+      rgb(16, 185, 129) 0%,
+      rgb(5, 150, 105) 100%
+    );
+  }
+
+  /* Ombres douces et professionnelles */
+  .shadow-sm {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .shadow-md {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  }
+
+  .shadow-xs {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  /* Transition élégante pour toutes les propriétés */
+  .transition-all {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+  }
+
+  /* Animation du spinner */
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .animate-spin {
+    animation: spin 0.8s linear infinite;
+  }
+
+  /* Effet de profondeur au clic */
+  .active\:scale-\[0\.98\]:active {
+    transform: scale(0.98);
+  }
+
+  /* Bordures fines et précises */
+  .border-2 {
+    border-width: 1.5px;
+  }
+}
