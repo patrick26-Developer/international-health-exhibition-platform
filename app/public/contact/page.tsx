@@ -1,4 +1,4 @@
-// app/public/contact/page.tsx - VERSION FUSION OPTIMALE
+// app/public/contact/page.tsx - VERSION AVEC IMAGE BACKGROUND
 'use client';
 
 import { useLanguageStore } from '@/lib/stores/language-store';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function ContactPage() {
   const { language } = useLanguageStore();
@@ -212,38 +213,110 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
-      {/* Hero - Ton style avec mon animation */}
-      <section className="py-20 bg-gradient-to-br from-emerald-50 via-emerald-100 to-white dark:from-emerald-950/20 dark:via-emerald-900/10 dark:to-gray-900">
-        <div className="container mx-auto px-4">
+      {/* Hero Section avec Background Image */}
+      <section className="relative py-24 bg-gradient-to-br from-emerald-950/90 to-emerald-800/90 overflow-hidden">
+        {/* Background Image avec overlay */}
+        <div className="absolute inset-0 z-0">
+          <Image
+            src="/images/contact/Contact.png"
+            alt={language === 'fr' 
+              ? "Équipe internationale de professionnels de santé en réunion" 
+              : "International team of health professionals in meeting"}
+            fill
+            className="object-cover"
+            priority
+            quality={90}
+            sizes="100vw"
+          />
+          {/* Overlay gradient pour améliorer la lisibilité */}
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-950/80 via-emerald-800/70 to-emerald-700/60" />
+          {/* Overlay supplémentaire pour le bas */}
+          <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-emerald-950 to-transparent" />
+        </div>
+        
+        {/* Contenu superposé */}
+        <div className="relative z-10 container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <Link 
-              href="/public" 
-              className="inline-flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 mb-6 hover:gap-3 transition-all"
+            {/* Lien de retour */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
             >
-              <ArrowRight className="h-4 w-4 rotate-180" />
-              {language === 'fr' ? 'Retour à l\'accueil' : 'Back to home'}
-            </Link>
+              <Link 
+                href="/public" 
+                className="inline-flex items-center gap-2 text-sm text-white/80 hover:text-white mb-6 hover:gap-3 transition-all group"
+              >
+                <ArrowRight className="h-4 w-4 rotate-180 group-hover:-translate-x-1 transition-transform" />
+                {language === 'fr' ? 'Retour à l\'accueil' : 'Back to home'}
+              </Link>
+            </motion.div>
             
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 mb-8 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-300">
-              <Mail className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
-              <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+            {/* Badge institutionnel */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.6 }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-8 hover:border-white/30 hover:bg-white/15 transition-all duration-300"
+            >
+              <Mail className="h-4 w-4 text-white" />
+              <span className="text-sm font-medium text-white">
                 {language === 'fr' ? 'Contact Institutionnel' : 'Institutional Contact'}
               </span>
-            </div>
+            </motion.div>
             
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+            {/* Titre principal */}
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+              className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight drop-shadow-lg"
+            >
               {t.title}
-            </h1>
-            <p className="text-2xl text-emerald-600 dark:text-emerald-400 mb-8">
+            </motion.h1>
+            
+            {/* Sous-titre */}
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.6 }}
+              className="text-2xl text-emerald-200 mb-8 leading-relaxed drop-shadow-md"
+            >
               {t.subtitle}
-            </p>
-            <p className="text-lg text-gray-600 dark:text-gray-300">
+            </motion.p>
+            
+            {/* Introduction */}
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.6 }}
+              className="text-lg text-white/90 max-w-3xl leading-relaxed"
+            >
               {t.intro}
-            </p>
+            </motion.p>
+            
+            {/* Indicateur scroll pour mobile */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1, duration: 0.6 }}
+              className="hidden sm:block mt-12"
+            >
+              <div className="flex flex-col items-center text-white/60">
+                <span className="text-sm mb-2 animate-pulse">
+                  {language === 'fr' ? 'Défiler pour continuer' : 'Scroll to continue'}
+                </span>
+                <div className="w-px h-12 bg-gradient-to-b from-white/60 to-transparent" />
+              </div>
+            </motion.div>
           </div>
         </div>
+        
+        {/* Ombre portée en bas de la section */}
+        <div className="absolute -bottom-1 left-0 right-0 h-12 bg-gradient-to-t from-white dark:from-gray-950 to-transparent z-10" />
       </section>
 
+      {/* Reste du code inchangé... */}
       {/* Departments - Ton contenu avec mon style */}
       <section className="py-16">
         <div className="container mx-auto px-4">
