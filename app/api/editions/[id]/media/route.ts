@@ -1,21 +1,15 @@
-// app/api/editions/[id]/media/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { creerSuccessResponse, creerErrorResponse, creerPaginatedResponse } from '@/lib/types';
 import type { TypeMedia } from '@/lib/generated/prisma/client';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
-/**
- * GET /api/editions/[id]/media
- * Récupérer les médias d'une édition spécifique
- */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')));
@@ -24,9 +18,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     
     const skip = (page - 1) * limit;
 
-    // Vérifier que l'édition existe
     const edition = await prisma.edition.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         nom: true,
@@ -42,12 +35,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Construction des filtres
     const where: any = {
-      editionId: params.id,
+      editionId: id,
     };
 
-    // Valider et appliquer le filtre typeMedia
     const validTypeMediaValues: TypeMedia[] = [
       'PHOTO',
       'VIDEO',
@@ -61,15 +52,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       where.typeMedia = typeMedia;
     }
 
-    // Filtre de visibilité publique
     if (estPublic !== null && estPublic !== undefined) {
       where.estPublic = estPublic === 'true';
     } else {
-      // Par défaut, afficher uniquement les médias publics
       where.estPublic = true;
     }
 
-    // Récupération des médias
     const [medias, total] = await Promise.all([
       prisma.media.findMany({
         where,
@@ -91,7 +79,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       prisma.media.count({ where }),
     ]);
 
-    // Formater la réponse
     const mediasFormatted = medias.map((media) => ({
       id: media.id,
       titre: media.titre,
@@ -121,13 +108,4 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
-
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Allow': 'GET, OPTIONS',
-    },
-  });
 }

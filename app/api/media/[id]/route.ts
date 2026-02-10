@@ -6,22 +6,17 @@ import { validateUpdateMedia } from '@/lib/validation/media-schema';
 import { isAdmin } from '@/lib/utils/helpers';
 import type { ValidationError, TypeMedia } from '@/lib/types';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
-/**
- * GET /api/media/[id]
- * Récupérer un média spécifique
- */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const session = await getSession();
     
     const media = await prisma.media.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         auteur: {
           select: {
@@ -51,7 +46,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Vérifier les permissions d'accès
     if (!media.estPublic) {
       if (!session) {
         return NextResponse.json(
@@ -80,11 +74,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-/**
- * PUT /api/media/[id]
- * Mettre à jour un média
- */
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -95,9 +85,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const { id } = await context.params;
     const body = await request.json();
 
-    // Validation
     const validation = validateUpdateMedia(body);
     
     if (!validation.success) {
@@ -115,9 +105,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const updateData = validation.data!;
 
-    // Récupérer le média existant
     const existingMedia = await prisma.media.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         auteurId: true,
@@ -133,7 +122,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Vérifier les permissions
     if (existingMedia.auteurId !== session.sub && !isAdmin(session.typeUtilisateur)) {
       return NextResponse.json(
         creerErrorResponse('Non autorisé à modifier ce média', 'FORBIDDEN'),
@@ -141,7 +129,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Préparer les données de mise à jour avec le bon type
     const dataToUpdate: any = {
       dateModification: new Date()
     };
@@ -152,9 +139,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (updateData.miniature !== undefined) dataToUpdate.miniature = updateData.miniature || null;
     if (updateData.estPublic !== undefined) dataToUpdate.estPublic = updateData.estPublic;
 
-    // Mettre à jour le média
     const updatedMedia = await prisma.media.update({
-      where: { id: params.id },
+      where: { id },
       data: dataToUpdate,
       include: {
         auteur: {
@@ -175,7 +161,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
     });
 
-    // Journalisation
     await prisma.journalAudit.create({
       data: {
         utilisateurId: session.sub,
@@ -203,11 +188,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-/**
- * DELETE /api/media/[id]
- * Supprimer un média
- */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -218,9 +199,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Récupérer le média
+    const { id } = await context.params;
+
     const media = await prisma.media.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         auteurId: true,
@@ -236,7 +218,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Vérifier les permissions
     if (media.auteurId !== session.sub && !isAdmin(session.typeUtilisateur)) {
       return NextResponse.json(
         creerErrorResponse('Non autorisé à supprimer ce média', 'FORBIDDEN'),
@@ -244,20 +225,16 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // TODO: Supprimer le fichier du stockage ici
-    
-    // Supprimer le média de la base
     await prisma.media.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
-    // Journalisation
     await prisma.journalAudit.create({
       data: {
         utilisateurId: session.sub,
         action: 'SUPPRESSION',
         entite: 'Media',
-        entiteId: params.id,
+        entiteId: id,
         adresseIP: request.headers.get('x-forwarded-for') || undefined,
         userAgent: request.headers.get('user-agent') || undefined,
       },

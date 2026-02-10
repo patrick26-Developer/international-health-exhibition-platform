@@ -1,17 +1,13 @@
-// app/api/notifications/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import prisma from '@/lib/prisma';
 import { creerSuccessResponse, creerErrorResponse } from '@/lib/types';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
-// GET /api/notifications/notifications/[id]
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -22,8 +18,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const { id } = await context.params;
     const notification = await prisma.notification.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!notification) {
@@ -52,8 +49,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// PATCH /api/notifications/notifications/[id] (marquer comme lue)
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -64,8 +60,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const { id } = await context.params;
     const notification = await prisma.notification.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!notification) {
@@ -83,7 +80,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const updatedNotification = await prisma.notification.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         lue: true,
         dateLecture: new Date()
@@ -102,8 +99,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// DELETE /api/notifications/notifications/[id]
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -114,8 +110,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const { id } = await context.params;
     const notification = await prisma.notification.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!notification) {
@@ -133,7 +130,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     await prisma.notification.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     return NextResponse.json(

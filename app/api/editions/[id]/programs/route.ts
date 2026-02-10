@@ -1,20 +1,14 @@
-// app/api/editions/[id]/programs/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { creerSuccessResponse, creerErrorResponse, creerPaginatedResponse } from '@/lib/types';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
-/**
- * GET /api/editions/[id]/programs
- * Récupérer les programmes d'une édition spécifique
- */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = Math.min(100, parseInt(searchParams.get('limit') || '20'));
@@ -22,9 +16,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     
     const skip = (page - 1) * limit;
 
-    // Vérifier que l'édition existe
     const edition = await prisma.edition.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!edition) {
@@ -35,7 +28,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const where = {
-      editionId: params.id,
+      editionId: id,
       ...(type && { type: type as any }),
     };
 
@@ -59,7 +52,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       prisma.programmeEdition.count({ where }),
     ]);
 
-    // Formater pour une réponse publique
     const programmesPublic = programmes.map(programme => ({
       ...programme,
       placesDisponibles: programme.maxParticipants 

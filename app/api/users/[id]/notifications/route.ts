@@ -1,4 +1,3 @@
-// app/api/users/[id]/notifications/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import prisma from '@/lib/prisma';
@@ -6,17 +5,11 @@ import { creerSuccessResponse, creerErrorResponse } from '@/lib/types';
 import { isAdmin } from '@/lib/utils/helpers';
 import type { TypeNotification } from '@/lib/types';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
-/**
- * GET /api/users/[id]/notifications
- * Récupérer les notifications d'un utilisateur spécifique (admin seulement)
- */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -27,17 +20,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Vérifier les permissions
-    if (session.sub !== params.id && !isAdmin(session.typeUtilisateur)) {
+    const { id } = await context.params;
+
+    if (session.sub !== id && !isAdmin(session.typeUtilisateur)) {
       return NextResponse.json(
         creerErrorResponse('Accès non autorisé', 'FORBIDDEN'),
         { status: 403 }
       );
     }
 
-    // Vérifier si l'utilisateur existe
     const utilisateur = await prisma.utilisateur.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { id: true }
     });
 
@@ -59,7 +52,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const skip = (page - 1) * limit;
 
     const where: any = {
-      utilisateurId: params.id
+      utilisateurId: id
     };
 
     if (lue !== null) {
@@ -112,11 +105,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-/**
- * POST /api/users/[id]/notifications
- * Créer une notification pour un utilisateur spécifique (admin seulement)
- */
-export async function POST(request: NextRequest, { params }: RouteParams) {
+export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -127,9 +116,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Vérifier si l'utilisateur existe
+    const { id } = await context.params;
+
     const utilisateur = await prisma.utilisateur.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { id: true, email: true, prenom: true }
     });
 
@@ -142,7 +132,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const body = await request.json();
 
-    // Validation basique
     if (!body.titre || !body.message || !body.type) {
       return NextResponse.json(
         creerErrorResponse('Titre, message et type sont requis', 'VALIDATION_ERROR'),
@@ -152,7 +141,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const notification = await prisma.notification.create({
       data: {
-        utilisateurId: params.id,
+        utilisateurId: id,
         type: body.type,
         titre: body.titre,
         message: body.message,
@@ -170,7 +159,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     });
 
-    // Journalisation
     await prisma.journalAudit.create({
       data: {
         utilisateurId: session.sub,
@@ -195,11 +183,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-/**
- * DELETE /api/users/[id]/notifications
- * Supprimer toutes les notifications d'un utilisateur (admin seulement)
- */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -210,9 +194,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Vérifier si l'utilisateur existe
+    const { id } = await context.params;
+
     const utilisateur = await prisma.utilisateur.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { id: true }
     });
 
@@ -223,23 +208,20 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Compter avant suppression pour le journal
     const countBefore = await prisma.notification.count({
-      where: { utilisateurId: params.id }
+      where: { utilisateurId: id }
     });
 
-    // Supprimer toutes les notifications
     await prisma.notification.deleteMany({
-      where: { utilisateurId: params.id }
+      where: { utilisateurId: id }
     });
 
-    // Journalisation
     await prisma.journalAudit.create({
       data: {
         utilisateurId: session.sub,
         action: 'SUPPRESSION',
         entite: 'Notification',
-        entiteId: `batch-${params.id}`,
+        entiteId: `batch-${id}`,
         modifications: {
           countBefore,
           countAfter: 0

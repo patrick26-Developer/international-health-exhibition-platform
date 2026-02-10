@@ -1,4 +1,3 @@
-// app/api/editions/[id]/route.ts - CORRIGÉ COMPLET
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth/session';
@@ -7,13 +6,16 @@ import { validateUpdateEdition } from '@/lib/validation/edition-schema';
 import { isAdmin } from '@/lib/utils/helpers';
 import type { ValidationError } from '@/lib/types';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+interface RouteContext {
+  params: Promise<{ id: string }>;
+}
+
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
+    
     const edition = await prisma.edition.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         inscriptions: {
           select: {
@@ -66,10 +68,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -87,9 +86,9 @@ export async function PUT(
       );
     }
 
+    const { id } = await context.params;
     const body = await request.json();
 
-    // ✅ Validation
     let editionData;
     try {
       editionData = validateUpdateEdition(body);
@@ -106,9 +105,8 @@ export async function PUT(
       );
     }
 
-    // Vérifier existence
     const editionExistante = await prisma.edition.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!editionExistante) {
@@ -118,7 +116,6 @@ export async function PUT(
       );
     }
 
-    // Vérifier unicité du slug si changé
     if (editionData.slug && editionData.slug !== editionExistante.slug) {
       const slugExistant = await prisma.edition.findUnique({
         where: { slug: editionData.slug as string },
@@ -132,13 +129,11 @@ export async function PUT(
       }
     }
 
-    // ✅ Mise à jour avec les bons noms de champs
     const edition = await prisma.edition.update({
-      where: { id: params.id },
+      where: { id },
       data: editionData,
     });
 
-    // Journalisation
     await prisma.journalAudit.create({
       data: {
         utilisateurId: session.sub,
@@ -164,10 +159,7 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -185,8 +177,10 @@ export async function DELETE(
       );
     }
 
+    const { id } = await context.params;
+
     const edition = await prisma.edition.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!edition) {
@@ -197,7 +191,7 @@ export async function DELETE(
     }
 
     await prisma.edition.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     await prisma.journalAudit.create({
@@ -205,7 +199,7 @@ export async function DELETE(
         utilisateurId: session.sub,
         action: 'SUPPRESSION',
         entite: 'Edition',
-        entiteId: params.id,
+        entiteId: id,
         adresseIP: request.headers.get('x-forwarded-for') || undefined,
         userAgent: request.headers.get('user-agent') || undefined,
       },

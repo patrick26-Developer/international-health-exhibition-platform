@@ -1,4 +1,3 @@
-// app/api/programs/[id]/route.ts - CORRECTION AVEC Prisma.NullableJsonNullValueInput
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth/session';
@@ -8,20 +7,15 @@ import { isAdmin } from '@/lib/utils/helpers';
 import type { ValidationError } from '@/lib/types';
 import { Prisma } from '@/lib/generated/prisma/client';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
-/**
- * GET /api/programs/[id]
- * Récupérer un programme spécifique
- */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const programme = await prisma.programmeEdition.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         edition: {
           select: {
@@ -53,11 +47,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-/**
- * PUT /api/programs/[id]
- * Mettre à jour un programme (admin seulement)
- */
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -75,9 +65,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const { id } = await context.params;
     const body = await request.json();
 
-    // Validation
     const validation = safeValidateUpdateProgramme(body);
     
     if (!validation.success) {
@@ -95,9 +85,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const updateData = validation.data!;
 
-    // Vérifier que le programme existe
     const programmeExistant = await prisma.programmeEdition.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!programmeExistant) {
@@ -107,7 +96,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Préparer les données de mise à jour
     const dataToUpdate: Prisma.ProgrammeEditionUpdateInput = {};
     
     if (updateData.type !== undefined) dataToUpdate.type = updateData.type;
@@ -117,20 +105,18 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (updateData.dateFin !== undefined) dataToUpdate.dateFin = new Date(updateData.dateFin);
     if (updateData.lieu !== undefined) dataToUpdate.lieu = updateData.lieu;
     
-    // ✅ CORRECTION : Utilisation de Prisma.DbNull ou Prisma.JsonNull
     if (updateData.intervenants !== undefined) {
       dataToUpdate.intervenants = updateData.intervenants 
         ? (updateData.intervenants as unknown as Prisma.InputJsonValue)
-        : Prisma.JsonNull; // ou Prisma.DbNull selon votre configuration
+        : Prisma.JsonNull;
     }
     
     if (updateData.maxParticipants !== undefined) dataToUpdate.maxParticipants = updateData.maxParticipants;
     
     dataToUpdate.dateModification = new Date();
 
-    // Mettre à jour le programme
     const programme = await prisma.programmeEdition.update({
-      where: { id: params.id },
+      where: { id },
       data: dataToUpdate,
       include: {
         edition: {
@@ -143,7 +129,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    // Journalisation
     await prisma.journalAudit.create({
       data: {
         utilisateurId: session.sub,
@@ -171,11 +156,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-/**
- * DELETE /api/programs/[id]
- * Supprimer un programme (admin seulement)
- */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -193,8 +174,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const { id } = await context.params;
     const programme = await prisma.programmeEdition.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!programme) {
@@ -204,18 +186,16 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Supprimer le programme
     await prisma.programmeEdition.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
-    // Journalisation
     await prisma.journalAudit.create({
       data: {
         utilisateurId: session.sub,
         action: 'SUPPRESSION',
         entite: 'ProgrammeEdition',
-        entiteId: params.id,
+        entiteId: id,
         adresseIP: request.headers.get('x-forwarded-for') || undefined,
         userAgent: request.headers.get('user-agent') || undefined,
       },

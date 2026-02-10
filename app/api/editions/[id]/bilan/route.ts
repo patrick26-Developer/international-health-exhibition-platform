@@ -1,4 +1,3 @@
-// app/api/editions/[id]/bilan/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth/session';
@@ -7,20 +6,15 @@ import { isAdmin } from '@/lib/utils/helpers';
 import { validateNumber } from '@/lib/utils/validators';
 import type { ValidationError, CreateBilanDTO } from '@/lib/types';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
-/**
- * GET /api/editions/[id]/bilan
- * Récupère le bilan d'une édition
- */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const edition = await prisma.edition.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         bilan: true,
       },
@@ -33,7 +27,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Si pas de bilan, retourner null
     if (!edition.bilan) {
       return NextResponse.json(
         creerSuccessResponse(null)
@@ -52,11 +45,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-/**
- * POST /api/editions/[id]/bilan
- * Crée ou met à jour le bilan d'une édition (admin seulement)
- */
-export async function POST(request: NextRequest, { params }: RouteParams) {
+export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -74,12 +63,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const { id } = await context.params;
     const body: CreateBilanDTO = await request.json();
 
-    // Validation
     const errors: ValidationError[] = [];
 
-    // Valider les nombres
     const nombreFields = {
       nombreVisiteurs: body.nombreVisiteurs,
       nombreExposants: body.nombreExposants,
@@ -101,7 +89,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     });
 
-    // Validation spécifique pour satisfaction (1-5)
     if (body.satisfactionMoyenne !== undefined) {
       const error = validateNumber(body.satisfactionMoyenne, {
         min: 1,
@@ -111,7 +98,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       if (error) errors.push(error);
     }
 
-    // Validation spécifique pour recommandation (1-10)
     if (body.recommandation !== undefined) {
       const error = validateNumber(body.recommandation, {
         min: 1,
@@ -129,9 +115,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Vérifier que l'édition existe
     const edition = await prisma.edition.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!edition) {
@@ -141,17 +126,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Vérifier si un bilan existe déjà
     const existingBilan = await prisma.bilanEdition.findUnique({
-      where: { editionId: params.id },
+      where: { editionId: id },
     });
 
     let bilan;
     
     if (existingBilan) {
-      // Mettre à jour le bilan existant
       bilan = await prisma.bilanEdition.update({
-        where: { editionId: params.id },
+        where: { editionId: id },
         data: {
           nombreVisiteurs: body.nombreVisiteurs,
           nombreExposants: body.nombreExposants,
@@ -166,10 +149,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         },
       });
     } else {
-      // Créer un nouveau bilan
       bilan = await prisma.bilanEdition.create({
         data: {
-          editionId: params.id,
+          editionId: id,
           nombreVisiteurs: body.nombreVisiteurs,
           nombreExposants: body.nombreExposants,
           nombreBenevoles: body.nombreBenevoles,
@@ -184,7 +166,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       });
     }
 
-    // Journalisation
     await prisma.journalAudit.create({
       data: {
         utilisateurId: session.sub,

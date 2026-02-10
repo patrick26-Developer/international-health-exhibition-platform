@@ -1,22 +1,15 @@
-// app/api/editions/[id]/statistics/route.ts
-// app/api/editions/[id]/statistics/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { EditionService } from '@/lib/services/edition-service';
 import { creerSuccessResponse, creerErrorResponse } from '@/lib/types';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
-/**
- * GET /api/editions/[id]/statistics
- * Statistiques détaillées d'une édition
- */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
-    const statistics = await EditionService.getStatistics(params.id);
+    const { id } = await context.params;
+    const statistics = await EditionService.getStatistics(id);
 
     return NextResponse.json(
       creerSuccessResponse(statistics)

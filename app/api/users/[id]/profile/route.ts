@@ -1,4 +1,3 @@
-// app/api/users/[id]/profile/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import prisma from '@/lib/prisma';
@@ -13,13 +12,11 @@ import {
 import { VALIDATION_ERROR_CODES } from '@/lib/utils/constants';
 import type { UpdateProfilDTO, APIResponse, ProfilUtilisateur, ValidationError } from '@/lib/types';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -30,8 +27,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Vérifier les permissions
-    if (session.sub !== params.id) {
+    const { id } = await context.params;
+
+    if (session.sub !== id) {
       return NextResponse.json(
         creerErrorResponse('Accès interdit', 'FORBIDDEN'),
         { status: 403 }
@@ -39,7 +37,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const utilisateur = await prisma.utilisateur.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!utilisateur) {
@@ -77,7 +75,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -88,8 +86,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Vérifier les permissions
-    if (session.sub !== params.id) {
+    const { id } = await context.params;
+
+    if (session.sub !== id) {
       return NextResponse.json(
         creerErrorResponse('Accès interdit', 'FORBIDDEN'),
         { status: 403 }
@@ -98,7 +97,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const body: UpdateProfilDTO = await request.json();
 
-    // Validation
     const errors: ValidationError[] = [];
 
     if (body.prenom !== undefined) {
@@ -138,9 +136,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Mettre à jour le profil
     const updatedUtilisateur = await prisma.utilisateur.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         prenom: body.prenom,
         nom: body.nom,
@@ -161,13 +158,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    // Journaliser la modification
     await prisma.journalAudit.create({
       data: {
-        utilisateurId: params.id,
+        utilisateurId: id,
         action: 'MODIFICATION',
         entite: 'Utilisateur',
-        entiteId: params.id,
+        entiteId: id,
         modifications: {
           avant: {},
           apres: body as any,

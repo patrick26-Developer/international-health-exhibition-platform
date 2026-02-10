@@ -3,16 +3,12 @@ import { getSession } from '@/lib/auth/session';
 import prisma from '@/lib/prisma';
 import { creerSuccessResponse, creerErrorResponse } from '@/lib/types';
 import { isAdmin, isSuperAdmin } from '@/lib/utils/helpers';
-import { hashPassword } from '@/lib/auth/bcrypt';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
-// GET /api/admin/users/[id]
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -23,8 +19,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const { id } = await context.params;
+
     const utilisateur = await prisma.utilisateur.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         email: true,
@@ -100,7 +98,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Vérifier les permissions (un admin normal ne peut pas voir un super admin)
     if (utilisateur.typeUtilisateur === 'SUPER_ADMIN' && !isSuperAdmin(session.typeUtilisateur)) {
       return NextResponse.json(
         creerErrorResponse('Accès non autorisé', 'FORBIDDEN'),
@@ -120,8 +117,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// PATCH /api/admin/users/[id]
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -132,11 +128,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const { id } = await context.params;
     const body = await request.json();
 
-    // Récupérer l'utilisateur existant
     const existingUser = await prisma.utilisateur.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { typeUtilisateur: true }
     });
 
@@ -147,7 +143,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Vérifier les permissions
     if (existingUser.typeUtilisateur === 'SUPER_ADMIN' && !isSuperAdmin(session.typeUtilisateur)) {
       return NextResponse.json(
         creerErrorResponse('Accès non autorisé', 'FORBIDDEN'),
@@ -155,12 +150,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Préparer les données de mise à jour
     const updateData: any = {
       dateModification: new Date()
     };
 
-    // Champs autorisés pour la mise à jour
     const allowedFields = [
       'typeUtilisateur',
       'statutCompte',
@@ -181,20 +174,18 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       }
     });
 
-    // Si on vérifie l'email, mettre à jour la date de vérification
     if (body.emailVerifie === true) {
       updateData.dateVerificationEmail = new Date();
     }
 
-    // Si on désactive le compte, supprimer les sessions
     if (body.statutCompte === 'INACTIF' || body.statutCompte === 'SUSPENDU') {
       await prisma.session.deleteMany({
-        where: { utilisateurId: params.id }
+        where: { utilisateurId: id }
       });
     }
 
     const updatedUser = await prisma.utilisateur.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       select: {
         id: true,
@@ -207,7 +198,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       }
     });
 
-    // Journalisation
     await prisma.journalAudit.create({
       data: {
         utilisateurId: session.sub,
@@ -235,8 +225,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// DELETE /api/admin/users/[id]
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -247,8 +236,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const { id } = await context.params;
+
     const utilisateur = await prisma.utilisateur.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!utilisateur) {
@@ -258,7 +249,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Ne pas supprimer les super admins
     if (utilisateur.typeUtilisateur === 'SUPER_ADMIN') {
       return NextResponse.json(
         creerErrorResponse('Impossible de supprimer un super administrateur', 'FORBIDDEN'),
@@ -266,9 +256,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Soft delete (mettre à jour le statut)
     await prisma.utilisateur.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         statutCompte: 'SUPPRIME',
         dateSuppression: new Date(),
@@ -276,18 +265,16 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       }
     });
 
-    // Supprimer les sessions actives
     await prisma.session.deleteMany({
-      where: { utilisateurId: params.id }
+      where: { utilisateurId: id }
     });
 
-    // Journalisation
     await prisma.journalAudit.create({
       data: {
         utilisateurId: session.sub,
         action: 'SUPPRESSION',
         entite: 'Utilisateur',
-        entiteId: params.id,
+        entiteId: id,
         adresseIP: request.headers.get('x-forwarded-for') || undefined,
         userAgent: request.headers.get('user-agent') || undefined,
       },

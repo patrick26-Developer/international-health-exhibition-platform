@@ -1,4 +1,3 @@
-// app/api/exhibitors/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth/session';
@@ -7,19 +6,15 @@ import { validateUpdateExposant } from '@/lib/validation/exhibitor-schema';
 import { isAdmin } from '@/lib/utils/helpers';
 import type { ValidationError } from '@/lib/types';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
-/**
- * GET /api/exhibitors/[id]
- */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const exposant = await prisma.exposant.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         utilisateur: {
           select: {
@@ -59,10 +54,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-/**
- * PUT /api/exhibitors/[id]
- */
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -73,9 +65,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const { id } = await context.params;
     const body = await request.json();
 
-    // Validation
     let exposantData;
     try {
       exposantData = validateUpdateExposant(body);
@@ -92,9 +84,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Vérifier existence et permissions
     const existing = await prisma.exposant.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!existing) {
@@ -111,9 +102,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Mise à jour
     const updated = await prisma.exposant.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...exposantData,
         dateModification: new Date(),
@@ -136,7 +126,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    // Journalisation
     await prisma.journalAudit.create({
       data: {
         utilisateurId: session.sub,
@@ -160,10 +149,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-/**
- * DELETE /api/exhibitors/[id]
- */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -174,8 +160,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const { id } = await context.params;
     const exposant = await prisma.exposant.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!exposant) {
@@ -186,16 +173,15 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     await prisma.exposant.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
-    // Journalisation
     await prisma.journalAudit.create({
       data: {
         utilisateurId: session.sub,
         action: 'SUPPRESSION',
         entite: 'Exposant',
-        entiteId: params.id,
+        entiteId: id,
         adresseIP: request.headers.get('x-forwarded-for') || undefined,
         userAgent: request.headers.get('user-agent') || undefined,
       },

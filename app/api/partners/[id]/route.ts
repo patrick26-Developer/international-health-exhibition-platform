@@ -1,4 +1,3 @@
-// app/api/partners/[id]/route.ts - CORRIGÉ COMPLET
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth/session';
@@ -7,20 +6,15 @@ import { isAdmin, estPartenaireActif } from '@/lib/utils/helpers';
 import type { UpdatePartenaireDTO, ValidationError } from '@/lib/types';
 import { validateURL } from '@/lib/utils/validators';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
-/**
- * GET /api/partners/[id]
- * Récupère un partenaire spécifique
- */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const partenaire = await prisma.partenaire.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         utilisateur: {
           select: {
@@ -42,7 +36,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Vérifier si le partenaire est actif
     const actif = estPartenaireActif(partenaire);
 
     return NextResponse.json(
@@ -60,11 +53,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-/**
- * PUT /api/partners/[id]
- * Met à jour un partenaire (admin ou propriétaire)
- */
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -75,11 +64,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const { id } = await context.params;
     const body: UpdatePartenaireDTO = await request.json();
 
-    // Récupérer le partenaire
     const partenaire = await prisma.partenaire.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         utilisateur: true,
       },
@@ -92,7 +81,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Vérifier les permissions
     const isOwner = partenaire.utilisateurId === session.sub;
     const userIsAdmin = isAdmin(session.typeUtilisateur);
 
@@ -103,7 +91,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Validation
     const errors: ValidationError[] = [];
 
     if (body.siteWeb !== undefined) {
@@ -123,9 +110,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Mise à jour
     const updatedPartenaire = await prisma.partenaire.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         nomOrganisation: body.nomOrganisation,
         typePartenaire: body.typePartenaire,
@@ -153,7 +139,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    // Journalisation
     await prisma.journalAudit.create({
       data: {
         utilisateurId: session.sub,
@@ -193,11 +178,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-/**
- * DELETE /api/partners/[id]
- * Supprime un partenaire (admin seulement)
- */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const session = await getSession();
     
@@ -215,8 +196,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const { id } = await context.params;
     const partenaire = await prisma.partenaire.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!partenaire) {
@@ -226,18 +208,16 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Supprimer le partenaire
     await prisma.partenaire.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
-    // Journalisation
     await prisma.journalAudit.create({
       data: {
         utilisateurId: session.sub,
         action: 'SUPPRESSION',
         entite: 'Partenaire',
-        entiteId: params.id,
+        entiteId: id,
         adresseIP: request.headers.get('x-forwarded-for') || undefined,
         userAgent: request.headers.get('user-agent') || undefined,
       },
