@@ -6,7 +6,27 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "vercel-build": "prisma generate && next build",
+    
+    "db:local": "cross-env NODE_ENV=development npx prisma studio",
+    "db:prod": "cross-env NODE_ENV=production npx prisma studio",
+    
+    "db:push:local": "cross-env NODE_ENV=development npx prisma db push",
+    "db:push:prod": "cross-env NODE_ENV=production npx prisma db push --accept-data-loss",
+    
+    "db:reset:local": "cross-env NODE_ENV=development npx prisma db push --force-reset && npx prisma db seed",
+    "db:reset:prod": "cross-env NODE_ENV=production npx prisma db push --force-reset --accept-data-loss && npx prisma db seed",
+    
+    "db:seed:local": "cross-env NODE_ENV=development npx prisma db seed",
+    "db:seed:prod": "cross-env NODE_ENV=production npx prisma db seed",
+    
+    "db:migrate:local": "cross-env NODE_ENV=development npx prisma migrate dev",
+    "db:migrate:prod": "cross-env NODE_ENV=production npx prisma migrate deploy",
+    
+    "db:generate": "prisma generate",
+    "db:format": "prisma format",
+    "db:pull": "prisma db pull"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -85,6 +105,7 @@
     "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.2",
     "prisma": "^7.2.0",
